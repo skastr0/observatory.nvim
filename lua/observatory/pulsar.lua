@@ -103,7 +103,12 @@ function M.score(root, opts, cb)
         assessment = build(root, doc.result)
         M.cache[root] = assessment
       else
-        err = "pulsar: " .. vim.inspect(doc.error or doc.status):sub(1, 300)
+        -- e.g. PROJECT_CODE_TRUST_REQUIRED: a deliberate gate, so report it rather than bypass it.
+        local e = type(doc.error) == "table" and doc.error or {}
+        err = ("pulsar: %s%s"):format(
+          e.message or e.code or tostring(doc.status),
+          e.recovery and ("\n" .. e.recovery[1]) or ""
+        )
       end
     end
     for _, waiter in ipairs(waiters) do
