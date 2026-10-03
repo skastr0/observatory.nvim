@@ -19,6 +19,9 @@ local defaults = {
     enabled = true,
     -- Findings about a whole file have no line; pinning them to line 1 is noisy.
     file_level = false,
+    -- Publish for every file with findings, not just open ones, so workspace views
+    -- such as Trouble list the whole repository.
+    workspace = true,
     -- Only findings at or above this severity get inline text; the rest show as signs.
     virtual_text_min = vim.diagnostic.severity.WARN,
   },
@@ -34,7 +37,7 @@ local SEVERITY = { warn = vim.diagnostic.severity.WARN, info = vim.diagnostic.se
 
 ---@param buf integer
 local function publish(buf)
-  if not (M.config.diagnostics.enabled and vim.api.nvim_buf_is_loaded(buf)) then
+  if not M.config.diagnostics.enabled then
     return
   end
   local name = vim.api.nvim_buf_get_name(buf)
@@ -46,7 +49,8 @@ local function publish(buf)
   if not a then
     return
   end
-  local last = vim.api.nvim_buf_line_count(buf)
+  -- An unloaded buffer reports zero lines; its positions are trusted as given.
+  local last = vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_line_count(buf) or math.huge
   local diags = {}
   for _, f in ipairs(a.by_file[cli.rel(root, name)] or {}) do
     if f.line or M.config.diagnostics.file_level then
@@ -68,7 +72,18 @@ local function publish(buf)
   vim.diagnostic.set(ns, buf, diags)
 end
 
-local function publish_all()
+---@param a? observatory.Assessment when given, also covers its files that are not open yet
+local function publish_all(a)
+  if a and M.config.diagnostics.enabled and M.config.diagnostics.workspace then
+    for file, findings in pairs(a.by_file) do
+      for _, f in ipairs(findings) do
+        if f.line or M.config.diagnostics.file_level then
+          vim.fn.bufadd(cli.abs(a.root, file))
+          break
+        end
+      end
+    end
+  end
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     publish(buf)
   end
@@ -89,7 +104,7 @@ local function with_assessment(cb, opts)
       end
       return
     end
-    publish_all()
+    publish_all(a)
     vim.cmd("redrawstatus")
     cb(a, root)
   end)

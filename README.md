@@ -43,7 +43,8 @@ loaded and fall back to the quickfix list.
 In a Snacks picker, `<c-q>` sends the list to quickfix.
 
 Findings that carry a line also appear as ordinary diagnostics (source `pulsar`) and refresh after
-each save. `require("observatory").status()` returns a statusline string with the readiness score.
+each save. They are published for every file in the repository, so Trouble's workspace diagnostics
+and `]d` / `[d` work on them like on any language-server diagnostic. `require("observatory").status()` returns a statusline string with the readiness score.
 
 ## Options
 
@@ -55,6 +56,7 @@ each save. `require("observatory").status()` returns a statusline string with th
   diagnostics = {
     enabled = true,
     file_level = false,   -- findings without a line stay out of the buffer
+    workspace = true,     -- publish for unopened files too, so Trouble lists the whole repo
     virtual_text_min = vim.diagnostic.severity.WARN,
   },
   diff_base = "HEAD",
